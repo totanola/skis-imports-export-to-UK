@@ -1,0 +1,9 @@
+import warnings
+warnings.simplefilter('ignore', FutureWarning)
+
+import matplotlib
+matplotlib.rcParams['axes.grid'] = True # show gridlines by default
+%matplotlib inline
+
+from pandas import *
+LOCATION='skis_UK_2017.csv'
