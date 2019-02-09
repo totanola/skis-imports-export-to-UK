@@ -1,9 +1,416 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# # Exercise notebook 4: Grouping your data
+# 
+# This Jupyter notebook, for Week 4 of The Open University's [_Learn to code for Data Analysis_](http://futurelearn.com/courses/learn-to-code) course, contains code examples and coding activities for you.
+# 
+# In Week 4, you'll come across steps directing you to this notebook. Once you've done the exercise, go back to FutureLearn to discuss it with your fellow learners and course facilitators and mark it as complete. Remember to run the code in this notebook before you start.
+
+# In[1]:
+
+
 import warnings
 warnings.simplefilter('ignore', FutureWarning)
 
 import matplotlib
 matplotlib.rcParams['axes.grid'] = True # show gridlines by default
-%matplotlib inline
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 from pandas import *
+
+
+# ## Exercise 1: Getting Comtrade data into your notebook
+# 
+# In this exercise, you will practice loading data from Comtrade into a pandas dataframe and getting it into a form where you can start to work with it. 
+# 
+# The following steps and code are an example. Your task for this exercise is stated at the end, after the example.
+# 
+# The data is obtained from the [United Nations Comtrade](http://comtrade.un.org/data/) website, by selecting the following configuration:
+# 
+# - Type of Product: goods
+# - Frequency: monthly 
+# - Periods: all of 2014
+# - Reporter: United Kingdom
+# - Partners: all
+# - Flows: imports and exports
+# - HS (as reported) commodity codes: 0401 (Milk and cream, neither concentrated nor sweetened) and 0402 (Milk and cream, concentrated or sweetened)
+# 
+# Clicking on 'Preview' results in a message that the data exceeds 500 rows. Data was downloaded using the *Download CSV* button and the download file renamed appropriately.
+
+# In[2]:
+
+
 LOCATION='skis_UK_2017.csv'
+
+
+# A URL for downloading all the data as a CSV file can also be obtained via "View API Link".
+# It must be modified so that it returns up to 5000 records (set `max=5000`) in the CSV format (`&fmt=csv`).
+
+# In[3]:
+
+
+# LOCATION = 'http://comtrade.un.org/api/get?max=5000&type=C&freq=M&px=HS&ps=2014&r=826&p=all&rg=1%2C2&cc=0401%2C0402&fmt=csv'
+
+
+# Load the data in from the specified location, ensuring that the various codes are read as strings. Preview the first few rows of the dataset.
+
+# In[4]:
+
+
+skis = read_csv(LOCATION, dtype={'Commodity Code':str, 'Reporter Code':str})
+skis.head()
+
+
+# Limit the columns to make the dataframe easier to work with by selecting just a subset of them.
+
+# In[5]:
+
+
+COLUMNS = ['Year', 'Period','Trade Flow','Reporter', 'Partner', 'Commodity','Commodity Code','Trade Value (US$)']
+skis = skis[COLUMNS]
+
+
+# Derive two new dataframes that separate out the 'World' partner data and the data for individual partner countries.
+
+# In[6]:
+
+
+skis_world = skis[skis['Partner'] == 'World']
+skis_countries = skis[skis['Partner'] != 'World']
+
+
+# In[7]:
+
+
+skis_world.head()
+
+
+# You may wish to store a local copy as a CSV file, for example:
+
+# In[8]:
+
+
+skis_countries.to_csv('countryskis.csv', index=False)
+
+
+# To load the data back in:
+
+# In[9]:
+
+
+load_test = read_csv('countryskis.csv', dtype={'Commodity Code':str, 'Reporter Code':str})
+load_test.head(2)
+
+
+# If you are on a Windows computer, data files may sometimes be saved using a file encoding (*Latin-1*). Pandas may not recognise this by default, in which case you will see a `UnicodeDecodeError`.
+# 
+# In such cases, opening files in `read_excel()` or `read_csv()` using the parameter  `encoding="ISO-8859-1"` or  `encoding = "Latin-1"` should fix the problem. For example, edit the previous command to read:
+# 
+# `load_test=read_csv('countrymilk.csv', dtype={'Commodity Code':str}, encoding = "ISO-8859-1")`
+# 
+# ### Subsetting Your Data
+# For large or heterogenous datasets, it is often convenient to create subsets of the data. To further separate out the imports:
+# 
+
+# In[10]:
+
+
+skis_imports = skis[skis['Trade Flow'] == 'Imports']
+skis_countries_imports = skis_countries[skis_countries['Trade Flow'] == 'Imports']
+skis_world_imports=skis_world[skis_world['Trade Flow'] == 'Imports']
+skis_exports = skis[skis['Trade Flow'] == 'Exports']
+skis_countries_exports = skis_countries[skis_countries['Trade Flow'] == 'Exports']
+skis_world_exports=skis_world[skis_world['Trade Flow'] == 'Exports']
+
+
+# ### Sorting the data
+# 
+# Having loaded in the data, find the most valuable partners in terms of import trade flow during a particular month by sorting the data by *decreasing* trade value and then selecting the top few rows.
+
+# In[11]:
+
+
+skisImportsInJanuary2014 = skis_countries_imports[skis_countries_imports['Period'] == 201701]
+skisImportsInJanuary2014.sort_values('Trade Value (US$)',ascending=False).head(10)
+
+
+# In[12]:
+
+
+skis_countries_imports.sort_values('Trade Value (US$)',ascending=False).head(10)
+
+
+# In[13]:
+
+
+skis_countries_imports_totals=skis_countries_imports.groupby('Partner')[['Trade Value (US$)']].aggregate(sum)
+
+skis_countries_imports_totals.sort_values('Trade Value (US$)', ascending=False).head()
+
+
+# In[14]:
+
+
+skis_countries_imports_totals.aggregate(sum)
+
+
+# In[15]:
+
+
+skis_countries_exports.sort_values('Trade Value (US$)',ascending=False).head(10)
+
+
+# In[16]:
+
+
+skis_countries_total_exports=skis_countries_exports.groupby('Partner')[['Trade Value (US$)']].aggregate(sum)
+skis_countries_total_exports.sort_values('Trade Value (US$)',ascending=False).head()
+
+
+# In[17]:
+
+
+skis_countries_total_exports.aggregate(sum)
+
+
+# ### Task
+# 
+# To complete these tasks you could copy this notebook and amend the code or create a new notebook to do the analysis for your chosen data.
+# 
+# Using the [Comtrade Data website](http://comtrade.un.org/data/), identify a dataset that describes the import and export trade flows for a particular service or form of goods between your country (as reporter) and all ('All') the other countries in the world. Get the monthly data for all months in 2014.
+# 
+# Download the data as a CSV file and add the file to the same folder as the one containing this notebook. Load the data in from the file into a pandas dataframe. Create an easier to work with dataframe that excludes data associated with the 'World' partner. Sort this data to see which countries are the biggest partners in terms of import and export trade flow.
+
+# **Now go back to the 'Practice getting data' step in FutureLearn to discuss and mark it complete.**
+
+# ## Exercise 2: Grouping data
+# 
+# On many occasions, a dataframe may be organised as groups of rows where the group membership is identified based on cell values within one or more 'key' columns. **Grouping** refers to the process whereby rows associated with a particular group are collated so that you can work with just those rows as distinct subsets of the whole dataset.
+# 
+# The number of groups the dataframe will be split into is based on the number of unique values identified within a single key column, or the number of unique combinations of values for two or more key columns.
+# 
+# The `groupby()` method runs down each row in a data frame, splitting the rows into separate groups based on the unique values associated with the key column or columns.
+# 
+# The following is an example of the steps and code needed to split the dataframe from the Exercise 1 example. 
+
+# ### Grouping the data
+
+# Split the data into two different subsets of data (imports and exports), by grouping on trade flow.
+
+# In[18]:
+
+
+skis_groups = skis_countries.groupby('Trade Flow')
+
+
+# Inspect the first few rows associated with a particular group:
+
+# In[19]:
+
+
+skis_groups.get_group('Imports').head()
+
+
+# As well as grouping on a single term, you can create groups based on multiple columns by passing in several column names as a list. For example, generate groups based on commodity code *and* trade flow, and then preview the keys used to define the groups.
+
+# In[20]:
+
+
+GROUPING_COMMFLOW = ['Commodity Code','Trade Flow']
+
+skis_groups = skis_countries.groupby(GROUPING_COMMFLOW)
+skis_groups.groups.keys()
+
+
+# Retrieve a group based on multiple group levels by passing in a tuple that specifies a value for each index column. For example, if a grouping is based on the `'Partner'` and `'Trade Flow'` columns, the argument of `get_group` has to be a partner/flow pair, like `('France', 'Import')` to  get all rows associated with imports from France.
+
+# In[21]:
+
+
+GROUPING_PARTNERFLOW = ['Partner','Trade Flow']
+skis_groups = skis_countries.groupby(GROUPING_PARTNERFLOW)
+
+GROUP_PARTNERFLOW= ('France','Imports')
+skis_groups.get_group( GROUP_PARTNERFLOW )
+
+
+# To find the leading partner for a particular commodity, group by commodity, get the desired group, and then sort the result.
+
+# In[22]:
+
+
+skis_groups = skis_countries.groupby(['Commodity Code'])
+skis_groups.get_group('950611').sort_values("Trade Value (US$)", ascending=False).head()
+
+
+# ### Task
+# 
+# Using your own data set from Exercise 1, try to group the data in a variety of ways, finding the most significant trade partner in each case:
+# 
+# - by commodity, or commodity code
+# - by trade flow, commodity and year.
+
+# **Now go back to the 'Splitting a dataset by grouping' step in FutureLearn to discuss and mark it complete.**
+
+# ## Exercise 3: Experimenting with Split-Apply-Combine – Summary reports
+# 
+# Having learned how to group data using the `groupby()` method, you will now start to put those groups to work.
+
+# ### Aggregation operations – Generating *Summary* reports
+# 
+# Aggegration operations can be invoked using the `aggregate()` method.
+# 
+# To find the total value of imports traded for each commodity within the period, take the world dataframe, and sum the values over the trade value column within each grouping.
+
+# In[23]:
+
+
+skis_world_imports.groupby('Commodity Code')['Trade Value (US$)'].aggregate(sum)
+
+
+# So that's 222 million dollars or so on the 0401 commodity, and 341 million dollars or so on 0402.
+# 
+# If you total (sum) up all the individual country contributions, you should get similar amounts.
+
+# In[24]:
+
+
+skis_imports_grouped=skis_countries_imports.groupby('Commodity Code')
+skis_imports_grouped['Trade Value (US$)'].aggregate(sum)
+
+
+# Not far off – there are perhaps a few rounding errors that would account for the odd couple of million that appear to be missing...
+
+# ### Finding top ranked elements within a group
+# 
+# To find the leading import partners across all the milk products, group by partner, sum (total) the trade value within each group, and then sort the result in descending order before displaying the top few entries.
+
+# In[25]:
+
+
+skis_countries_imports_totals=skis_countries_imports.groupby('Partner')[['Trade Value (US$)']].aggregate(sum)
+skis_countries_imports_totals.sort_values('Trade Value (US$)', ascending=False).head()
+
+
+# ### Generating simple charts
+# 
+# One of the useful features of the `aggregate()` method is that it returns an object that can be plotted from directly, in this example a horizontal bar chart.
+
+# In[26]:
+
+
+skis_imports_grouped['Trade Value (US$)'].aggregate(sum).plot(kind='barh')
+
+
+# ### Generating alternative groupings
+# 
+# Reports can also be generated to show the total imports per month for each commodity: group on commodity, trade flow and period, and then sum the trade values contained within each group.
+
+# In[27]:
+
+
+monthlies=skis_countries_imports.groupby(['Commodity','Trade Flow','Period'])[['Trade Value (US$)']].aggregate(sum)
+monthlies
+
+
+# The `groupby()` method *splits* the data into separate distinct groups of rows, and then the `aggregate()` method takes each group of rows from the results of the `groupby()` operation, *applies* the specified aggregation function, and then *combines* the results in the output. 
+# 
+# The aggregation function itself is applied to all columns of an appropriate type. In the example, the only numeric column that makes sense to aggregate over is the trade value column.
+# 
+# As well as built in summary operations, such as finding the total (`sum`), or maximum or minimum value in a group (`max`, `min`), aggregating functions imported from other Python packages can also be used. As shown in the next example, the `numpy` package has a function `mean` that will calculate the mean (simple average) value for a set of values.
+# 
+# ### Generating several aggregation values at the same time
+# To generate several aggregate reports in a single line of code, provide a list of several aggregating operations to the `aggregate()` method:
+
+# In[28]:
+
+
+from numpy import mean
+
+GROUPING_COMMFLOWPERIOD=['Commodity','Trade Flow','Period']
+skis_countries.groupby(GROUPING_COMMFLOWPERIOD)['Trade Value (US$)'].aggregate([sum, min, max, mean])
+
+
+# By combining different grouping combinations and aggregate functions, you can quickly ask a range of questions over the data or generate a wide variety of charts from it.
+# 
+# Sometimes, however,  it can be quite hard to see any 'outstanding' values in a complex pivot table. In such cases, a chart may help you see which values are significantly larger or smaller than the other values.
+# 
+# For example, plot the maximum value by month across each code/period combination to see which month saw the maximum peak flow of imports from a single partner.
+
+# In[29]:
+
+
+skis_countries_imports.groupby(['Commodity Code','Period'])['Trade Value (US$)'].aggregate(max).plot(kind='barh')
+
+
+# In[30]:
+
+
+imports1=skis_countries_imports.groupby(['Commodity Code','Period'])[['Trade Value (US$)']].aggregate(max)
+imports1
+
+
+# For the 0401 commodity, the largest single monthly trade flow in 2014 appears to have taken place in September (201409). For the 0402 commodity, the weakest month was December, 2014.
+
+# To chart the mean trade flows by month, simply aggregate on the *mean* rather than the `max`.
+
+# In some cases, you might want to sort the order of the bars in a bar chart by value. By default, the `sort()` operator sorts a series or dataframe 'in place'. That is, it sorts the dataframe and doesn't return anything. Use the `inplace=False` parameter to return the sorted values so that the plot function can work on them, or alternatively use the `order()` function.
+# 
+# The following chart displays the total imports for the combined commodities by partner (including the *World* partner) for the top five partners: the `sort()` element sorts the values in descending order, passes them to the `head()` element, which selects the top five and passes those onto the plotting function.
+
+# In[31]:
+
+
+skis_bypartner_total=skis_countries[skis_countries["Trade Flow"]=='Imports'].groupby(['Partner'])['Trade Value (US$)'].aggregate(sum)
+skis_bypartner_total.plot(kind='barh')
+#milk_bypartner_total.order('Trade Value (US$)',ascending=False).head(5).plot(kind='barh')
+
+
+# ### Tasks
+# 
+# For the 0402 trade item, which months saw the greatest average (mean) activity? How does that compare with the maximum flows in each month? How does it compare with the total flow in each month?
+# 
+# Download your own choice of monthly dataset over one or two years containing both import and export data. (To start with, you may find it convenient to split the data into two dataframes, one for exports and one for imports.)
+# 
+# Using your own data:
+# 
+# - find out which months saw the largest total value of imports, or exports? 
+# - assess, by eye, if there appears to be any seasonal trend in the behaviour of imports or exports?
+# - plot a bar chart showing the top three importers or exporters of your selected trade item over the period you grabbed the data for, compared to the total world trade value.
+# 
+
+# In[32]:
+
+
+skis_countries_exports.groupby(['Commodity Code','Period'])['Trade Value (US$)'].aggregate(max).plot(kind='barh')
+
+
+# In[33]:
+
+
+exports1=skis_countries_exports.groupby(['Commodity Code','Period'])[['Trade Value (US$)']].aggregate(max)
+exports1
+
+
+# In[34]:
+
+
+trade1=merge(imports1, exports1, on='Period', how='outer')
+trade1
+
+
+# In[35]:
+
+
+trade2=(imports1+exports1)
+trade2
+
+
+# In[36]:
+
+
+trade2.plot(kind='bar')
+
+
+# **Now go back to the 'Summary operations' step in FutureLearn to discuss and mark it complete.**
